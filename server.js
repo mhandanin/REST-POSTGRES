@@ -1,7 +1,8 @@
-const express = require("express");
+﻿const express = require("express");
 const postgres = require("postgres");
+const crypto = require("crypto");
 const z = require("zod");
-
+const f2pGamesRouter = require("./exercice2");
 
 const app = express();
 const port = 8000;
@@ -17,6 +18,20 @@ const ProductSchema = z.object({
 });
 
 const CreateProductSchema = ProductSchema.omit({ id: true });
+
+const UserSchema = z.object({
+  username: z.string().min(1),
+  password: z.string().min(1),
+  email: z.string().email(),
+});
+
+const CreateUserSchema = UserSchema;
+const UpdateUserSchema = UserSchema;
+const PatchUserSchema = UserSchema.partial().refine((data) => Object.keys(data).length > 0, {
+  message: "At least one field is required",
+});
+
+const hashPassword = (password) => crypto.createHash("sha512").update(password).digest("hex");
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
@@ -73,6 +88,93 @@ app.delete("/products/:id", async (req, res) => {
     res.status(404).send({ message: "Not found" });
   }
 });
+
+// Users: only POST, PUT, PATCH as required by Exercise 1
+app.post("/users", async (req, res) => {
+  const result = CreateUserSchema.safeParse(req.body);
+
+  if (!result.success) {
+    return res.status(400).send(result);
+  }
+
+  try {
+    const { username, password, email } = result.data;
+    const hashedPassword = hashPassword(password);
+
+    const users = await sql`
+      INSERT INTO users (username, password, email)
+      VALUES (${username}, ${hashedPassword}, ${email})
+      RETURNING id, username, email
+    `;
+
+    res.status(201).send(users[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
+
+app.put("/users/:id", async (req, res) => {
+  const result = UpdateUserSchema.safeParse(req.body);
+
+  if (!result.success) {
+    return res.status(400).send(result);
+  }
+
+  try {
+    const { username, password, email } = result.data;
+    const hashedPassword = hashPassword(password);
+
+    const users = await sql`
+      UPDATE users
+      SET username = ${username}, password = ${hashedPassword}, email = ${email}
+      WHERE id = ${req.params.id}
+      RETURNING id, username, email
+    `;
+
+    if (users.length > 0) {
+      res.send(users[0]);
+    } else {
+      res.status(404).send({ message: "Not found" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
+
+app.patch("/users/:id", async (req, res) => {
+  const result = PatchUserSchema.safeParse(req.body);
+
+  if (!result.success) {
+    return res.status(400).send(result);
+  }
+
+  try {
+    const { username, password, email } = result.data;
+
+    const users = await sql`
+      UPDATE users
+      SET
+        username = COALESCE(${username ?? null}, username),
+        password = COALESCE(${password ? hashPassword(password) : null}, password),
+        email = COALESCE(${email ?? null}, email)
+      WHERE id = ${req.params.id}
+      RETURNING id, username, email
+    `;
+
+    if (users.length > 0) {
+      res.send(users[0]);
+    } else {
+      res.status(404).send({ message: "Not found" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
+
+app.use("/f2p-games", f2pGamesRouter);
 
 app.listen(port, () => {
   console.log(`Listening on http://localhost:${port}`);
