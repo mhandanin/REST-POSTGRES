@@ -56,9 +56,21 @@ app.post("/products", async (req, res) => {
 });
 
 app.get("/products", async (req, res) => {
+  const { name, about, price } = req.query;
+  const parsedPrice = price === undefined ? null : Number(price);
+
+  if (price !== undefined && Number.isNaN(parsedPrice)) {
+    return res.status(400).send({ message: "Invalid price" });
+  }
+
   const products = await sql`
-    SELECT * FROM products
-    `;
+    SELECT *
+    FROM products
+    WHERE
+      (${name ?? null}::text IS NULL OR name ILIKE ${`%${name ?? ""}%`})
+      AND (${about ?? null}::text IS NULL OR about ILIKE ${`%${about ?? ""}%`})
+      AND (${parsedPrice}::numeric IS NULL OR price <= ${parsedPrice})
+  `;
 
   res.send(products);
 });
