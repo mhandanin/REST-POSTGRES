@@ -12,5 +12,15 @@ CREATE TABLE users (
   email VARCHAR(255) UNIQUE NOT NULL
 );
 
+CREATE TABLE orders (
+  id SERIAL PRIMARY KEY,
+  "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  "productIds" INTEGER[] NOT NULL,
+  total FLOAT NOT NULL,
+  payment BOOLEAN NOT NULL DEFAULT FALSE,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 INSERT INTO products (name, about, price) VALUES
   ('My first game', 'This is an awesome game', '60')

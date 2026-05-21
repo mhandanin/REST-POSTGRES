@@ -3,12 +3,14 @@ const postgres = require("postgres");
 const crypto = require("crypto");
 const z = require("zod");
 const f2pGamesRouter = require("./exercice2");
+const ordersRouter = require("./exercice4");
 
 const app = express();
 const port = 8000;
 const sql = postgres({ db: "mydb", user: "user", password: "test", port: 5433 });
 
 app.use(express.json());
+app.locals.sql = sql;
 
 const ProductSchema = z.object({
   id: z.string(),
@@ -187,7 +189,9 @@ app.patch("/users/:id", async (req, res) => {
 });
 
 app.use("/f2p-games", f2pGamesRouter);
+app.use("/orders", ordersRouter);
 
 app.listen(port, () => {
   console.log(`Listening on http://localhost:${port}`);
 });
+
