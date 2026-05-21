@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const z = require("zod");
 const f2pGamesRouter = require("./exercice2");
 const ordersRouter = require("./exercice4");
+const reviewsRouter = require("./exercice5");
 
 const app = express();
 const port = 8000;
@@ -40,7 +41,7 @@ app.get("/", (req, res) => {
 });
 
 app.post("/products", async (req, res) => {
-  const result = await CreateProductSchema.safeParse(req.body);
+  const result = CreateProductSchema.safeParse(req.body);
 
   if (result.success) {
     const { name, about, price } = result.data;
@@ -83,6 +84,8 @@ app.get("/products/:id", async (req, res) => {
     `;
 
   if (product.length > 0) {
+    const reviews = await sql`SELECT * FROM reviews WHERE "productId" = ${product[0].id} ORDER BY "createdAt" DESC`;
+    product[0].reviews = reviews;
     res.send(product[0]);
   } else {
     res.status(404).send({ message: "Not found" });
@@ -190,8 +193,15 @@ app.patch("/users/:id", async (req, res) => {
 
 app.use("/f2p-games", f2pGamesRouter);
 app.use("/orders", ordersRouter);
+app.use("/reviews", reviewsRouter);
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./openapi.json');
+
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 
 app.listen(port, () => {
   console.log(`Listening on http://localhost:${port}`);
 });
+
 

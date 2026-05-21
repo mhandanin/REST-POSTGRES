@@ -1,4 +1,4 @@
-﻿CREATE TABLE products (
+CREATE TABLE products (
   id SERIAL PRIMARY KEY,
   name VARCHAR(100),
   about VARCHAR(500),
@@ -23,4 +23,18 @@ CREATE TABLE orders (
 );
 
 INSERT INTO products (name, about, price) VALUES
-  ('My first game', 'This is an awesome game', '60')
+  ('My first game', 'This is an awesome game', '60');
+
+ALTER TABLE products
+  ADD COLUMN IF NOT EXISTS "reviewIds" INTEGER[] DEFAULT '{}'::integer[],
+  ADD COLUMN IF NOT EXISTS score FLOAT DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS reviews (
+  id SERIAL PRIMARY KEY,
+  "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  "productId" INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  score INTEGER NOT NULL CHECK (score >= 1 AND score <= 5),
+  content TEXT,
+  "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
